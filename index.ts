@@ -7,6 +7,7 @@ import NodeCache from "node-cache";
 import request from "request-promise-native";
 import { getAllEmails } from "./hubspot-email-utils";
 import { getAllNotes } from "./hubspot-note-utils";
+import { getAllTasks } from "./hubspot-task-utils";
 import { getAllTickets } from "./hubspot-ticket-utils";
 
 configDotenv();
@@ -150,6 +151,7 @@ app.get("/", async (req: Request, res: Response) => {
     const tickets = await getAllTickets(accessToken as string);
     const notes = await getAllNotes(accessToken as string);
     const emails = await getAllEmails(accessToken as string);
+    const tasks = await getAllTasks(accessToken as string);
     res.write(`<h4>Access token: ${accessToken}</h4>`);
     displayContactName(res, contact);
     res.write(
@@ -157,6 +159,7 @@ app.get("/", async (req: Request, res: Response) => {
     );
     res.write(`<h4>Notes: <pre>${JSON.stringify(notes, null, 2)}</pre></h4>`);
     res.write(`<h4>Emails: <pre>${JSON.stringify(emails, null, 2)}</pre></h4>`);
+    res.write(`<h4>Tasks: <pre>${JSON.stringify(tasks, null, 2)}</pre></h4>`);
   } else {
     res.write(`<a href="/install"><h3>Install the app</h3></a>`);
   }
