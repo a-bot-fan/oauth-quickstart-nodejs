@@ -5,6 +5,7 @@ import express, { Request, Response } from "express";
 import session from "express-session";
 import NodeCache from "node-cache";
 import request from "request-promise-native";
+import { getAllEmails } from "./hubspot-email-utils";
 import { getAllNotes } from "./hubspot-note-utils";
 import { getAllTickets } from "./hubspot-ticket-utils";
 
@@ -21,10 +22,18 @@ if (!process.env.CLIENT_ID || !process.env.CLIENT_SECRET) {
 
 const CLIENT_ID = process.env.CLIENT_ID!;
 const CLIENT_SECRET = process.env.CLIENT_SECRET!;
-let SCOPES = "crm.objects.contacts.read";
-if (process.env.SCOPE) {
-  SCOPES = process.env.SCOPE.split(/ |, ?|%20/).join(" ");
-}
+const SCOPES = (
+  process.env.SCOPE?.split(/ |, ?|%20/) || [
+    "crm.export",
+    "crm.objects.contacts.read",
+    "crm.objects.contacts.write",
+    "forms",
+    "oauth",
+    "sales-email-read",
+    "tickets",
+  ]
+).join(" ");
+
 const REDIRECT_URI = `http://localhost:${PORT}/oauth-callback`;
 
 app.use(
@@ -140,12 +149,14 @@ app.get("/", async (req: Request, res: Response) => {
     const contact = await getContact(accessToken as string);
     const tickets = await getAllTickets(accessToken as string);
     const notes = await getAllNotes(accessToken as string);
+    const emails = await getAllEmails(accessToken as string);
     res.write(`<h4>Access token: ${accessToken}</h4>`);
     displayContactName(res, contact);
     res.write(
       `<h4>Tickets: <pre>${JSON.stringify(tickets, null, 2)}</pre></h4>`
     );
     res.write(`<h4>Notes: <pre>${JSON.stringify(notes, null, 2)}</pre></h4>`);
+    res.write(`<h4>Emails: <pre>${JSON.stringify(emails, null, 2)}</pre></h4>`);
   } else {
     res.write(`<a href="/install"><h3>Install the app</h3></a>`);
   }
