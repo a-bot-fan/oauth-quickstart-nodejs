@@ -1,13 +1,12 @@
 import { Client } from "@hubspot/api-client";
 import { SimplePublicObjectWithAssociations } from "@hubspot/api-client/lib/codegen/crm/contacts/models/SimplePublicObjectWithAssociations";
-import { FilterOperatorEnum } from "@hubspot/api-client/lib/codegen/crm/tickets/models/Filter";
-import { NextPage } from "@hubspot/api-client/lib/codegen/crm/tickets/models/NextPage";
-import { PublicObjectSearchRequest } from "@hubspot/api-client/lib/codegen/crm/tickets/models/PublicObjectSearchRequest";
 import { configDotenv } from "dotenv";
 import express, { Request, Response } from "express";
 import session from "express-session";
 import NodeCache from "node-cache";
 import request from "request-promise-native";
+import { getAllNotes } from "./hubspot-note-utils";
+import { getAllTickets } from "./hubspot-ticket-utils";
 
 configDotenv();
 const app = express();
@@ -112,77 +111,6 @@ const getContact = async (accessToken: string) => {
   return contacts[0];
 };
 
-const getTickets = async (accessToken: string) => {
-  const pageSize = 100;
-  const allTickets: any[] = [];
-  let after: string = "";
-  let morePagesAvailable: NextPage | true | undefined = true;
-
-  const hubspotClient = new Client({ accessToken });
-  while (morePagesAvailable) {
-    const PublicObjectSearchRequest: PublicObjectSearchRequest = {
-      filterGroups: [
-        {
-          filters: [
-            {
-              propertyName: "createdate",
-              operator: FilterOperatorEnum.Gte,
-              value: `${Date.now() - 30 * 86400000 * 3}`,
-            },
-          ],
-        },
-      ],
-      sorts: ["createdate"],
-      limit: pageSize,
-      after,
-      properties: [],
-    };
-
-    const { results, paging } =
-      await hubspotClient.crm.tickets.searchApi.doSearch(
-        PublicObjectSearchRequest
-      );
-    allTickets.push(...results);
-    morePagesAvailable = paging?.next;
-    if (morePagesAvailable) {
-      after = paging?.next?.after as string;
-    }
-  }
-
-  return allTickets;
-};
-
-const getNotes = async (accessToken: string) => {
-  const pageSize = 100;
-  const allNotes: any[] = [];
-  let after: string | undefined = undefined;
-  let morePagesAvailable: NextPage | true | undefined = true;
-
-  const hubspotClient = new Client({ accessToken });
-
-  while (morePagesAvailable) {
-    const { results, paging } =
-      await hubspotClient.crm.objects.notes.basicApi.getPage(
-        pageSize,
-        after,
-        [
-          "hs_note_body",
-          "hs_timestamp",
-          "hs_attachment_ids",
-          "hubspot_owner_id",
-        ],
-        [],
-        ["ticket", "contact"]
-      );
-    allNotes.push(...results);
-    morePagesAvailable = paging?.next;
-    if (morePagesAvailable) {
-      after = paging?.next?.after as string;
-    }
-  }
-  return allNotes;
-};
-
 const displayContactName = (
   res: Response,
   contact: SimplePublicObjectWithAssociations | Error
@@ -210,8 +138,8 @@ app.get("/", async (req: Request, res: Response) => {
   if (isAuthorized(req.sessionID)) {
     const accessToken = await getAccessToken(req.sessionID);
     const contact = await getContact(accessToken as string);
-    const tickets = await getTickets(accessToken as string);
-    const notes = await getNotes(accessToken as string);
+    const tickets = await getAllTickets(accessToken as string);
+    const notes = await getAllNotes(accessToken as string);
     res.write(`<h4>Access token: ${accessToken}</h4>`);
     displayContactName(res, contact);
     res.write(
