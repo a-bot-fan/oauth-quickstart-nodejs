@@ -35,7 +35,7 @@ const SCOPES = (
   ]
 ).join(" ");
 
-const REDIRECT_URI = `http://localhost:${PORT}/oauth-callback`;
+const REDIRECT_URI = `http://localhost:${PORT}/hubspot/oauth-callback`;
 
 app.use(
   session({
